@@ -46,11 +46,20 @@ export function createWorld(random) {
   for (let i = 0; i < POOL_PICKUPS; i += 1) {
     pickups.push({ active: false, kind: KIND_CORN, x: 0, y: 0, width: 0, height: 0, bob: 0 });
   }
+  // Smash debris: small fragments flung off a dashed-through obstacle.
+  // Fixed pool, fixed launch speeds — deterministic, no allocation in step.
+  const debris = [];
+  for (let i = 0; i < 12; i += 1) {
+    debris.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, size: 6, color: '#d9a441' });
+  }
+  const DEBRIS_VX = [-160, -90, -40, 30, 90, 150];
+  const DEBRIS_VY = [-320, -380, -280, -340, -260, -300];
   const state = {
-    player, obstacles, pickups,
+    player, obstacles, pickups, debris,
     score: 0, distance: 0, lives: LIVES, elapsed: 0, dinnerLeft: DINNER_SECONDS,
     farmerGap: 26, combo: 0, bestCombo: 0, corn: 0, pies: 0, feathers: 0,
     zone: 0, speed: WORLD.baseSpeed, spawnTimer: 1.1, sinceStumble: 99, over: false, escaped: false,
+    smashTimer: 0, smashes: 0,
   };
 
   function reset() {
@@ -60,11 +69,13 @@ export function createWorld(random) {
     player.sliding = false; player.slideTimer = 0; player.invulnerable = 0; player.mudTimer = 0;
     for (const o of obstacles) o.active = false;
     for (const p of pickups) p.active = false;
+    for (const d of debris) d.active = false;
     state.score = 0; state.distance = 0; state.lives = LIVES; state.elapsed = 0;
     state.dinnerLeft = DINNER_SECONDS; state.farmerGap = 26; state.combo = 0; state.bestCombo = 0;
     state.corn = 0; state.pies = 0; state.feathers = 0; state.zone = 0;
     state.speed = WORLD.baseSpeed; state.spawnTimer = 1.1; state.sinceStumble = 99;
     state.over = false; state.escaped = false;
+    state.smashTimer = 0; state.smashes = 0;
   }
 
   function freeObstacle() {
@@ -138,6 +149,21 @@ export function createWorld(random) {
     return { x: o.x + o.width / 2 - 12 + Math.sin(o.phase) * 30, y: o.y + 40, width: 24, height: 40 };
   }
 
+  function spawnDebris(o) {
+    // Six fragments in the smashed obstacle's own colours, flung up and out.
+    const color = o.kind === KIND_FENCE ? '#8a6a42' : o.kind === KIND_OVEN ? '#ff7a1a' : o.kind === KIND_KNIFE ? '#d7dce4' : '#d9a441';
+    let n = 0;
+    for (const d of debris) {
+      if (n >= 6) break;
+      if (d.active) continue;
+      d.active = true;
+      d.x = o.x + o.width / 2; d.y = o.y + o.height / 2;
+      d.vx = DEBRIS_VX[n]; d.vy = DEBRIS_VY[n];
+      d.life = 0.8; d.size = 6 + (n % 3) * 2; d.color = color;
+      n += 1;
+    }
+  }
+
   function stumble() {
     state.lives -= 1;
     state.farmerGap = Math.max(0, state.farmerGap - 7);
@@ -163,6 +189,16 @@ export function createWorld(random) {
     if (player.dashing) speed += 420;
     state.speed = Math.min(WORLD.maxSpeed + 420, speed);
     state.sinceStumble += dt;
+    if (state.smashTimer > 0) state.smashTimer = Math.max(0, state.smashTimer - dt);
+    for (const d of debris) {
+      if (!d.active) continue;
+      d.x -= state.speed * dt;
+      d.x += d.vx * dt;
+      d.y += d.vy * dt;
+      d.vy += 1400 * dt;
+      d.life -= dt;
+      if (d.life <= 0 || d.y > FIELD.groundY + 6) d.active = false;
+    }
 
     // Farmer Bram: clean running slowly rebuilds the gap; dashing gains more.
     if (!harmless && state.sinceStumble > 3) {
@@ -223,6 +259,8 @@ export function createWorld(random) {
       if (player.dashing) {
         o.active = false; o.smashed = true;
         state.score += 25; state.combo += 1; state.bestCombo = Math.max(state.bestCombo, state.combo);
+        state.smashes += 1; state.smashTimer = 1.5;
+        spawnDebris(o);
         events |= EVENT_SMASH;
         continue;
       }

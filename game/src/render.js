@@ -3,7 +3,7 @@
 // filled with the backdrop colour. Flat vector art drawn with canvas paths —
 // no images, no fonts beyond the system stack. Text that holds a number is
 // rebuilt only when the number changes, so a frame allocates nothing.
-import { FIELD, FONT, GOAL_DISTANCE, LIVES, PALETTE, ZONES } from './config.js';
+import { FIELD, FONT, GOAL_DISTANCE, LIVES, PALETTE, PLAYER, ZONES } from './config.js';
 import { KIND_CORN, KIND_FENCE, KIND_FEATHER, KIND_HAY, KIND_KNIFE, KIND_MUD, KIND_OVEN, KIND_PIE, zoneAt } from './world.js';
 
 export const SCREEN_TITLE = 'title';
@@ -66,20 +66,22 @@ export function createRenderer(canvas) {
     grad.addColorStop(1, zone.skyBot);
     context.fillStyle = grad;
     context.fillRect(0, 0, FIELD.width, FIELD.groundY);
-    // Low Thanksgiving sun.
+    // Low Thanksgiving sun, kept below the HUD band (top panels end at
+    // y=140) so it never bleeds through a panel.
     context.fillStyle = '#fff2c0';
     context.beginPath();
-    context.arc(1050, 150, 54, 0, Math.PI * 2);
+    context.arc(1060, 250, 54, 0, Math.PI * 2);
     context.fill();
     context.fillStyle = 'rgba(255, 242, 192, 0.35)';
     context.beginPath();
-    context.arc(1050, 150, 84, 0, Math.PI * 2);
+    context.arc(1060, 250, 84, 0, Math.PI * 2);
     context.fill();
-    // Drifting clouds, placed by distance so they parallax.
+    // Drifting clouds, placed by distance so they parallax — also below
+    // the HUD band, so no cloud shows through a top panel.
     context.fillStyle = 'rgba(255, 244, 214, 0.85)';
     for (let i = 0; i < 6; i += 1) {
       const cx = ((hash(i + 3) * 1400 - state.distance * 6 - i * 260) % 1500 + 1500) % 1500 - 110;
-      const cy = 46 + hash(i + 11) * 120;
+      const cy = 170 + hash(i + 11) * 110;
       context.beginPath();
       context.ellipse(cx, cy, 62, 18, 0, 0, Math.PI * 2);
       context.ellipse(cx + 42, cy + 6, 44, 14, 0, 0, Math.PI * 2);
@@ -225,9 +227,11 @@ export function createRenderer(canvas) {
     context.restore();
   }
 
-  function drawFarmer(state) {
-    // Farmer Bram runs in from the left as the gap closes; off-screen while far.
-    const fx = state.player.x - 46 - state.farmerGap * 22;
+  function drawFarmer(state, screen) {
+    // Farmer Bram runs in from the left as the gap closes. 10px per metre
+    // keeps him on-screen at the full honest gap (30m), so the cover can
+    // show him without faking the number — at 0m he is right behind Tilly.
+    const fx = state.player.x - 46 - state.farmerGap * 10;
     if (fx < -140) return;
     const base = FIELD.groundY;
     const bob = Math.sin(state.elapsed * 14) * 4;
@@ -261,8 +265,10 @@ export function createRenderer(canvas) {
       context.stroke();
     }
     context.restore();
-    // Shout bubble when he is close — clamped on-screen.
-    if (state.farmerGap < 14) {
+    // Shout bubble when he is close — clamped on-screen, and only while
+    // playing: on the end screens the big panel covers this corner and
+    // would slice the bubble in half.
+    if (state.farmerGap < 14 && (screen === SCREEN_PLAY || screen === SCREEN_PAUSED)) {
       const bx = Math.max(16, Math.min(fx + 10, FIELD.width - 206));
       panel(bx, FIELD.groundY - 190, 190, 44);
       text('“COME BACK HERE!”', bx + 10, FIELD.groundY - 178, 17, PALETTE.text, 'left', true);
@@ -406,12 +412,22 @@ export function createRenderer(canvas) {
     }
   }
 
+  function drawDebris(state) {
+    for (const d of state.debris) {
+      if (!d.active) continue;
+      context.globalAlpha = Math.min(1, d.life / 0.4);
+      context.fillStyle = d.color;
+      context.fillRect(d.x - d.size / 2, d.y - d.size / 2, d.size, d.size * 0.7);
+    }
+    context.globalAlpha = 1;
+  }
+
   function drawHud(state, best) {
     // Top bar: score left, dinner countdown centre, lives + dash right.
     panel(16, 12, 300, 64);
     text(`SCORE ${Math.floor(state.score)}`, 30, 22, 24, PALETTE.text, 'left', true);
     text(`CORN ${state.corn}  PIE ${state.pies}  FEATHER ${state.feathers}`, 30, 52, 14, PALETTE.muted);
-    const urgent = state.dinnerLeft < 30;
+    const urgent = state.dinnerLeft <= 12;
     panel(490, 12, 300, 64);
     text(urgent ? 'DINNER IN — HURRY!' : 'DINNER IN', 640, 20, 14, urgent ? PALETTE.danger : PALETTE.muted, 'center', true);
     text(fmtTime(state.dinnerLeft), 640, 36, 26, urgent ? PALETTE.danger : PALETTE.text, 'center', true);
@@ -431,20 +447,22 @@ export function createRenderer(canvas) {
       context.fill();
       hx += 42;
     }
-    const dashFrac = state.player.dashCooldown <= 0 ? 1 : 1 - state.player.dashCooldown / 1.6;
+    const dashFrac = state.player.dashCooldown <= 0 ? 1 : 1 - state.player.dashCooldown / PLAYER.dashCooldown;
     context.fillStyle = 'rgba(255,255,255,0.18)';
     context.fillRect(978, 58, 120, 8);
     context.fillStyle = dashFrac >= 1 ? PALETTE.good : '#ffd94d';
     context.fillRect(978, 58, 120 * dashFrac, 8);
     text(state.player.dashCooldown <= 0 ? 'DASH READY' : 'DASH…', 1108, 52, 13, PALETTE.muted);
-    // Distance progress bar with zone ticks.
-    panel(16, 88, 1248, 40);
+    // Distance progress bar with zone ticks. Labels sit ABOVE the bar
+    // with clear air between them, inside a taller panel, so no text
+    // ever touches the bar line or the panel edge.
+    panel(16, 88, 1248, 52);
+    text(`${Math.floor(state.distance)}m / ${GOAL_DISTANCE}m — ${ZONES[state.zone].name}`, 36, 94, 13, PALETTE.text, 'left', true);
+    text(`BEST ${Math.max(best, Math.floor(state.score))}`, 1130, 94, 13, PALETTE.muted, 'left', true);
     context.fillStyle = 'rgba(255,255,255,0.18)';
-    context.fillRect(30, 104, 1100, 10);
+    context.fillRect(30, 116, 1100, 10);
     context.fillStyle = '#7dff8a';
-    context.fillRect(30, 104, 1100 * Math.min(1, state.distance / GOAL_DISTANCE), 10);
-    text(`${Math.floor(state.distance)}m / ${GOAL_DISTANCE}m — ${ZONES[state.zone].name}`, 36, 118, 13, PALETTE.text, 'left', true);
-    text(`BEST ${Math.max(best, Math.floor(state.score))}`, 1130, 118, 13, PALETTE.muted, 'left', true);
+    context.fillRect(30, 116, 1100 * Math.min(1, state.distance / GOAL_DISTANCE), 10);
     // Farmer gap strip, bottom-left.
     panel(16, 640, 340, 56);
     const gapFrac = Math.min(1, state.farmerGap / 30);
@@ -454,14 +472,25 @@ export function createRenderer(canvas) {
     context.fillRect(30, 676, 200 * gapFrac, 8);
     text(`FARMER BRAM — ${Math.max(0, Math.floor(state.farmerGap))}m BEHIND`, 30, 650, 15, PALETTE.text, 'left', true);
     if (state.combo >= 3) text(`COMBO x${state.combo}`, 1140, 652, 20, '#ffd94d', 'left', true);
-    if (state.player.dashing) text('DASH SMASH!', 640, 150, 30, '#ffd94d', 'center', true);
+    // The smash banner only shows for a real smash (world.smashTimer),
+    // never just for dashing — a dash that hits nothing earns no banner.
+    // A few fragments drift down under it while it is up.
+    if (state.smashTimer > 0) {
+      text('DASH SMASH!', 640, 150, 30, '#ffd94d', 'center', true);
+      const fall = (1.5 - state.smashTimer) * 90;
+      const frag = [[-70, 0, '#d9a441'], [-38, 6, '#8a6a42'], [-8, 2, '#d9a441'], [24, 8, '#ff7a1a'], [56, 3, '#8a6a42'], [84, 7, '#d9a441']];
+      for (const [dx, dy, color] of frag) {
+        context.fillStyle = color;
+        context.fillRect(640 + dx, 188 + dy + fall * 0.4, 9, 7);
+      }
+    }
   }
 
   function drawTitle(state, best) {
     panel(290, 150, 700, 330);
     text('GOBBLE DASH', 640, 168, 64, '#ffd94d', 'center', true);
     text('Escape Before Dinner', 640, 238, 30, PALETTE.text, 'center', true);
-    text('Tilly the turkey has 3 minutes to run 1000m to Freedom Forest', 640, 288, 18, PALETTE.muted, 'center');
+    text('Tilly the turkey has 40 seconds to run 1000m to Freedom Forest', 640, 288, 18, PALETTE.muted, 'center');
     text('before Farmer Bram serves her for Thanksgiving dinner.', 640, 312, 18, PALETTE.muted, 'center');
     text('SPACE / CLICK LEFT — jump (x2)      SHIFT / CLICK RIGHT — dash', 640, 352, 17, PALETTE.text, 'center');
     text('DOWN — slide under the carving knife      Corn +10 · Pie +25 · Golden feather +50', 640, 378, 17, PALETTE.text, 'center');
@@ -501,7 +530,8 @@ export function createRenderer(canvas) {
     drawGround(state);
     for (const p of state.pickups) if (p.active) drawPickup(p);
     for (const o of state.obstacles) if (o.active) drawObstacle(o);
-    drawFarmer(state);
+    drawDebris(state);
+    drawFarmer(state, screen);
     drawTurkey(state.player, state, screen === SCREEN_PLAY || screen === SCREEN_PAUSED);
     if (screen === SCREEN_PLAY || screen === SCREEN_PAUSED) drawHud(state, best);
     if (screen === SCREEN_TITLE) drawTitle(state, best);

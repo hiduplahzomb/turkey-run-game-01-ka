@@ -9,7 +9,10 @@ export const FIELD = { width: 1280, height: 720, groundY: 600 };
 export const STEP = 1 / 60;
 
 export const GOAL_DISTANCE = 1000;
-export const DINNER_SECONDS = 180;
+// A skilled run covers 1000m in ~35s, so the dinner bell is set at 40s:
+// the whole run eats almost the whole timer, and at ~770m only ~10s are
+// left for the last ~230m — real tension, not a 3-minute stroll.
+export const DINNER_SECONDS = 40;
 
 export const PLAYER = {
   x: 300,
@@ -20,7 +23,7 @@ export const PLAYER = {
   gravity: 2600,
   dashSpeed: 1500,
   dashSeconds: 0.22,
-  dashCooldown: 1.6,
+  dashCooldown: 1.0,
   slideSeconds: 0.55,
 };
 
@@ -78,7 +81,7 @@ export const PALETTE = {
   corn: '#f2c94c',
   pie: '#c96a3b',
   feather: '#ffd94d',
-  panel: 'rgba(20, 16, 10, 0.72)',
+  panel: 'rgba(20, 16, 10, 0.93)',
   text: '#fff6e0',
   muted: '#ffe9b8',
   danger: '#ff4d3d',

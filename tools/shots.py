@@ -4,10 +4,10 @@
 Renders the game's own ?shot= scenes in headless Chromium via Playwright
 and saves real renders of the game's code as JPEGs under screenshots/:
 
-  1-climax.jpg  — mid-run in the Pine Forest, ~700m in: full HUD (score,
-                  distance bar, dinner countdown, 3 hearts, dash meter,
-                  Farmer Bram gap), Tilly mid-jump over the oven, corn arc,
-                  carving knife swinging. This is the cover (first by name).
+  1-climax.jpg  — mid-run in the Pine Forest, ~920m in: full HUD (score,
+                  distance bar, dinner countdown at 0:07, 2 hearts, dash meter,
+                  Farmer Bram gap), Tilly mid-jump toward the oven, a fresh
+                  dash smash with debris and COMBO x3. This is the cover (first by name).
   2-title.jpg   — title screen: GOBBLE DASH / Escape Before Dinner.
   3-caught.jpg  — end screen: CAUGHT by Farmer Bram.
   4-escaped.jpg — end screen: ESCAPED into Freedom Forest.
