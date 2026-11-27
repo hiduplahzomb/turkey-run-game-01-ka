@@ -4,7 +4,7 @@
 [![rank](https://make.fun/badge/turkey-run-game-01/hiduplahzomb/turkey-run-game-01-ka/rank.svg)](https://make.fun/bounty/turkey-run-game-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=turkey-run-game-01)
 [![reward](https://make.fun/badge/turkey-run-game-01/hiduplahzomb/turkey-run-game-01-ka/reward.svg)](https://make.fun/bounty/turkey-run-game-01?utm_source=github&utm_medium=readme&utm_campaign=turkey-run-game-01)
 
-**GOBBLE DASH: Escape Before Dinner** — Tilly the turkey has 3 minutes to sprint 1000m through the Barn Yard, the Cornfield and the Pine Forest before the Thanksgiving dinner bell rings. Jump hay bales and fences, slide under the swinging carving knife, dash straight through the oven's fire, grab corn, pumpkin pie and golden feathers — while Farmer Bram closes in from behind with his pitchfork. Three stumbles and she is dinner.
+**GOBBLE DASH: Escape Before Dinner** — Tilly the turkey has 40 seconds to sprint 1000m through the Barn Yard, the Cornfield and the Pine Forest before the Thanksgiving dinner bell rings. Jump hay bales and fences, slide under the swinging carving knife, dash straight through the oven's fire, grab corn, pumpkin pie and golden feathers — while Farmer Bram closes in from behind with his pitchfork. Three stumbles and she is dinner.
 
 This game was built from scratch for the make.fun competition **"Make the best turkey escape game"** (`turkey-run-game-01`). Every name, character and visual inside it is original work — it does not copy any commercial game. The game runs fully **offline** from static files, with no network requests and no outside libraries. The run is deterministic: the same seed always plays the same run, so the screenshots are real renders of the game's own code.
 
@@ -14,7 +14,7 @@ This game was built from scratch for the make.fun competition **"Make the best t
 2. **Jump** with `Space`, `↑`, `W`, or a click/tap on the left half of the screen. Jump again mid-air for a double jump over tall fences and ovens.
 3. **Dash** with `Shift`, `X`, or a click/tap on the right half. A dash smashes straight through a hay bale or fence (+25) and rebuilds the gap to Farmer Bram.
 4. **Slide** with `↓` or `S` to duck under the swinging carving knife.
-5. **Watch the gap.** Every stumble costs a life and lets Farmer Bram close 9m. At 0m — or when the dinner bell rings — Tilly is caught. Three zones, one escape: Barn Yard (0–333m), Cornfield (334–666m), Pine Forest (667–1000m).
+5. **Watch the gap.** Every stumble costs a life and lets Farmer Bram close 7m. At 0m — or when the dinner bell rings — Tilly is caught. Three zones, one escape: Barn Yard (0–333m), Cornfield (334–666m), Pine Forest (667–1000m).
 6. **Collect:** corn +10, pumpkin pie +25, golden feather +50 and an instant dash refill. Combos build as you collect without stumbling.
 
 ## ⌨️ Controls
@@ -40,7 +40,7 @@ Then open http://localhost:8080 in a desktop browser. No build step, no dependen
 
 Real renders of the game's own code (`?shot=` scenes, seed 1):
 
-1. `1-climax.jpg` — mid-run in the Pine Forest, dinner clock under a minute, Farmer Bram 9m behind.
+1. `1-climax.jpg` — mid-run in the Pine Forest, 920m in with 0:07 left on the 40-second dinner clock, Farmer Bram 25m behind, a fresh dash smash (COMBO x3, score 1105).
 2. `2-title.jpg` — title screen.
 3. `3-caught.jpg` — caught end screen.
 4. `4-escaped.jpg` — escaped end screen.
