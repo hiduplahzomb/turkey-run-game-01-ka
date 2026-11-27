@@ -53,8 +53,11 @@ export function createRenderer(canvas) {
     context.beginPath();
     context.roundRect(x, y, w, h, 18);
     context.fill();
-    context.strokeStyle = 'rgba(255, 220, 140, 0.55)';
-    context.lineWidth = 2;
+    // One frame style for every panel on every screen: a solid cream
+    // border that reads the same against the orange Barn Yard sky and
+    // the dark Pine Forest dusk.
+    context.strokeStyle = 'rgba(255, 220, 140, 0.9)';
+    context.lineWidth = 3;
     context.stroke();
   }
 
@@ -426,7 +429,10 @@ export function createRenderer(canvas) {
     // Top bar: score left, dinner countdown centre, lives + dash right.
     panel(16, 12, 300, 64);
     text(`SCORE ${Math.floor(state.score)}`, 30, 22, 24, PALETTE.text, 'left', true);
-    text(`CORN ${state.corn}  PIE ${state.pies}  FEATHER ${state.feathers}`, 30, 52, 14, PALETTE.muted);
+    // Plural names everywhere, matching the end screens, and a SMASH
+    // count so the +25-per-smash part of the score can be traced on the
+    // spot instead of guessed at afterwards.
+    text(`CORN ${state.corn}  PIES ${state.pies}  FEATHERS ${state.feathers}  SMASH ${state.smashes}`, 30, 52, 13, PALETTE.muted);
     const urgent = state.dinnerLeft <= 12;
     panel(490, 12, 300, 64);
     text(urgent ? 'DINNER IN — HURRY!' : 'DINNER IN', 640, 20, 14, urgent ? PALETTE.danger : PALETTE.muted, 'center', true);
@@ -459,43 +465,55 @@ export function createRenderer(canvas) {
     panel(16, 88, 1248, 52);
     text(`${Math.floor(state.distance)}m / ${GOAL_DISTANCE}m — ${ZONES[state.zone].name}`, 36, 94, 13, PALETTE.text, 'left', true);
     text(`BEST ${Math.max(best, Math.floor(state.score))}`, 1130, 94, 13, PALETTE.muted, 'left', true);
+    // The bar runs the full inner width of the panel (30 to 1250), so it
+    // ends flush with the panel's right edge instead of stopping short
+    // and leaving a dead strip under BEST.
     context.fillStyle = 'rgba(255,255,255,0.18)';
-    context.fillRect(30, 116, 1100, 10);
+    context.fillRect(30, 116, 1220, 10);
     context.fillStyle = '#7dff8a';
-    context.fillRect(30, 116, 1100 * Math.min(1, state.distance / GOAL_DISTANCE), 10);
-    // Farmer gap strip, bottom-left.
+    context.fillRect(30, 116, 1220 * Math.min(1, state.distance / GOAL_DISTANCE), 10);
+    // Farmer gap strip, bottom-left. The bar is the gap itself: full
+    // means far and safe, draining as Bram closes in — and the colour
+    // follows the danger, green while safe, amber as he closes, red
+    // when he is about to catch Tilly. An orange bar at 80%+ used to
+    // read as high danger while Tilly was still safe.
     panel(16, 640, 340, 56);
     const gapFrac = Math.min(1, state.farmerGap / 30);
     context.fillStyle = 'rgba(255,255,255,0.18)';
     context.fillRect(30, 676, 200, 8);
-    context.fillStyle = state.farmerGap < 12 ? PALETTE.danger : '#ff9a3d';
+    context.fillStyle = state.farmerGap < 12 ? PALETTE.danger : state.farmerGap < 18 ? '#ffd94d' : PALETTE.good;
     context.fillRect(30, 676, 200 * gapFrac, 8);
     text(`FARMER BRAM — ${Math.max(0, Math.floor(state.farmerGap))}m BEHIND`, 30, 650, 15, PALETTE.text, 'left', true);
     if (state.combo >= 3) text(`COMBO x${state.combo}`, 1140, 652, 20, '#ffd94d', 'left', true);
     // The smash banner only shows for a real smash (world.smashTimer),
     // never just for dashing — a dash that hits nothing earns no banner.
-    // A few fragments drift down under it while it is up.
+    // It fades as the dash recharges, so it is never at full strength
+    // while the dash is already half ready again; the only fragments
+    // are the real debris at the smashed obstacle, not confetti in the
+    // sky under the banner.
     if (state.smashTimer > 0) {
+      const dashFrac = state.player.dashCooldown <= 0 ? 1 : 1 - state.player.dashCooldown / PLAYER.dashCooldown;
+      context.save();
+      context.globalAlpha = Math.max(0, 1 - dashFrac);
       text('DASH SMASH!', 640, 150, 30, '#ffd94d', 'center', true);
-      const fall = (1.5 - state.smashTimer) * 90;
-      const frag = [[-70, 0, '#d9a441'], [-38, 6, '#8a6a42'], [-8, 2, '#d9a441'], [24, 8, '#ff7a1a'], [56, 3, '#8a6a42'], [84, 7, '#d9a441']];
-      for (const [dx, dy, color] of frag) {
-        context.fillStyle = color;
-        context.fillRect(640 + dx, 188 + dy + fall * 0.4, 9, 7);
-      }
+      context.restore();
     }
   }
 
   function drawTitle(state, best) {
-    panel(290, 150, 700, 330);
+    panel(290, 150, 700, 360);
     text('GOBBLE DASH', 640, 168, 64, '#ffd94d', 'center', true);
     text('Escape Before Dinner', 640, 238, 30, PALETTE.text, 'center', true);
     text('Tilly the turkey has 40 seconds to run 1000m to Freedom Forest', 640, 288, 18, PALETTE.muted, 'center');
     text('before Farmer Bram serves her for Thanksgiving dinner.', 640, 312, 18, PALETTE.muted, 'center');
     text('SPACE / CLICK LEFT — jump (x2)      SHIFT / CLICK RIGHT — dash', 640, 352, 17, PALETTE.text, 'center');
     text('DOWN — slide under the carving knife      Corn +10 · Pie +25 · Golden feather +50', 640, 378, 17, PALETTE.text, 'center');
-    text('Press SPACE or click to run!', 640, 420, 20, PALETTE.good, 'center', true);
-    if (best > 0) text(`BEST SCORE ${best}`, 640, 452, 15, PALETTE.muted, 'center');
+    // The smash is worth points too, and it is the other way the combo
+    // grows — written here so the score on the cover can be traced back
+    // to its parts instead of hiding +25 per smash.
+    text('Dash smash +25 · every smash raises your combo', 640, 404, 17, PALETTE.text, 'center');
+    text('Press SPACE or click to run!', 640, 438, 20, PALETTE.good, 'center', true);
+    if (best > 0) text(`BEST SCORE ${best}`, 640, 470, 15, PALETTE.muted, 'center');
   }
 
   function drawOver(state, best, escaped) {
@@ -505,10 +523,17 @@ export function createRenderer(canvas) {
       text('Tilly reached Freedom Forest — no dinner today!', 640, 238, 20, PALETTE.text, 'center');
     } else {
       text('CAUGHT!', 640, 168, 64, PALETTE.danger, 'center', true);
-      text(state.dinnerLeft <= 0 ? 'The dinner bell rang — Tilly is on the table.' : 'Farmer Bram caught Tilly at the fence.', 640, 238, 20, PALETTE.text, 'center');
+      // The caption says where she was caught, not what she was near:
+      // the fence sits far off to the right and Bram catches her from
+      // behind, so "at the fence" never matched the picture.
+      const zoneName = ZONES[state.zone].name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+      text(state.dinnerLeft <= 0 ? 'The dinner bell rang — Tilly is on the table.' : `Farmer Bram caught Tilly in the ${zoneName}.`, 640, 238, 20, PALETTE.text, 'center');
     }
     text(`SCORE ${Math.floor(state.score)}   DISTANCE ${Math.floor(state.distance)}m / ${GOAL_DISTANCE}m`, 640, 292, 22, PALETTE.text, 'center', true);
-    text(`CORN ${state.corn}   PIES ${state.pies}   FEATHERS ${state.feathers}   BEST COMBO x${state.bestCombo}`, 640, 328, 18, PALETTE.muted, 'center');
+    // A best combo of zero is no combo at all — the "x0" line is hidden
+    // instead of printed raw.
+    const comboPart = state.bestCombo > 0 ? `   BEST COMBO x${state.bestCombo}` : '';
+    text(`CORN ${state.corn}   PIES ${state.pies}   FEATHERS ${state.feathers}${comboPart}`, 640, 328, 18, PALETTE.muted, 'center');
     text(`BEST ${Math.max(best, Math.floor(state.score))}`, 640, 362, 18, PALETTE.muted, 'center');
     text('Press SPACE or click to run again!', 640, 420, 20, PALETTE.good, 'center', true);
   }

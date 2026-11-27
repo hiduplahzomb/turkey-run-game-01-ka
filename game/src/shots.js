@@ -9,7 +9,7 @@
 // scene runs an autopilot that never dodges anything, so it really does get
 // caught instead of escaping by accident.
 import { FIELD, PLAYER, STEP } from './config.js';
-import { EVENT_ESCAPED, EVENT_OVER, KIND_FENCE, KIND_HAY, KIND_KNIFE, KIND_MUD, KIND_OVEN } from './world.js';
+import { EVENT_ESCAPED, EVENT_OVER, KIND_FEATHER, KIND_FENCE, KIND_HAY, KIND_KNIFE, KIND_MUD, KIND_OVEN, KIND_PIE } from './world.js';
 import { SCREEN_ESCAPED, SCREEN_OVER, SCREEN_PLAY, SCREEN_TITLE } from './render.js';
 
 const TITLE_SECONDS = 5;
@@ -27,6 +27,20 @@ function nearestThreat(state) {
   return best;
 }
 
+function nearestValuable(state) {
+  // The nearest pie or golden feather ahead — the pickups worth jumping
+  // for. Corn is left to chance: it sits low and a jump for it would
+  // cost more than it pays.
+  const px = state.player.x;
+  let best = null;
+  for (const p of state.pickups) {
+    if (!p.active || (p.kind !== KIND_PIE && p.kind !== KIND_FEATHER)) continue;
+    const gap = p.x - px;
+    if (gap > 0 && gap < 380 && (best === null || gap < best.gap)) best = { pickup: p, gap };
+  }
+  return best;
+}
+
 function autopilot(state, skillful) {
   const player = state.player;
   const input = { jump: false, dash: false, slide: false };
@@ -34,7 +48,19 @@ function autopilot(state, skillful) {
   // would lift Tilly over the very obstacle the dash is meant to smash.
   if (player.dashing) return input;
   const threat = nearestThreat(state);
-  if (threat === null) return input;
+  if (threat === null) {
+    // No obstacle near: jump for a pie or golden feather floating above
+    // the ground line, double-jumping if it is still above Tilly and
+    // close. Only when nothing threatens — a jump for a pickup must
+    // never carry Tilly into an obstacle.
+    const val = nearestValuable(state);
+    if (val !== null) {
+      const p = val.pickup;
+      if (player.grounded && p.y < FIELD.groundY - 80) input.jump = true;
+      else if (!player.grounded && player.jumps < 2 && val.gap < 130 && p.y + p.height < player.y + 10) input.jump = true;
+    }
+    return input;
+  }
   const { obstacle: o, gap } = threat;
   const look = skillful ? 320 : 170;
   if (gap > look) return input;
@@ -51,7 +77,21 @@ function autopilot(state, skillful) {
   // smash banner and its points. The dash only lasts 0.22s, so the
   // autopilot holds its jump and waits until the obstacle is inside dash
   // range before dashing; dashing from far out would expire before
-  // contact and waste the dash.
+  // contact and waste the dash. One exception: an oven with a pie
+  // floating above it is jumped over instead of dashed through. The
+  // jump is a late one (gap < 170), so the arc passes through the pie
+  // rather than over it, and the arc is ridden without a double jump or
+  // an air dash — both would lift Tilly clear over the pie. Only once
+  // the pie is behind her (gap <= -40) does normal handling resume, to
+  // dodge the oven itself instead of chasing the pie.
+  const pieAboveOven = o.kind === KIND_OVEN && state.pickups.some((p) => p.active && p.kind === KIND_PIE && Math.abs(p.x - (o.x + 30)) < 20);
+  if (pieAboveOven) {
+    if (player.grounded) {
+      if (gap < 170) input.jump = true;
+      return input;
+    }
+    if (gap > -40) return input;
+  }
   if ((o.kind === KIND_HAY || o.kind === KIND_FENCE || o.kind === KIND_OVEN) && player.grounded && player.dashCooldown <= 0) {
     if (gap < 110) { input.dash = true; return input; }
     if (gap < 240) return input;
@@ -101,7 +141,9 @@ export function stageShot(name, world) {
       const p = world.state.player;
       if (world.state.over || world.state.escaped) break;
       if (world.state.distance > 920 || world.state.dinnerLeft < 4) break;
-      if (!p.grounded && world.state.smashTimer > 0 && world.state.combo >= 3) {
+      if (!p.grounded && world.state.smashTimer > 0 && world.state.combo >= 3 && p.dashCooldown > 0.3) {
+        // The dash was spent a moment ago, so the fading DASH SMASH!
+        // banner is still clearly visible in the frame.
         let overOne = false;
         for (const o of world.state.obstacles) {
           if (o.active && o.x < p.x + p.width + 40 && o.x + o.width > p.x - 20) { overOne = true; break; }

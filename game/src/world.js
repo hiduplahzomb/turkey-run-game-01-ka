@@ -48,12 +48,15 @@ export function createWorld(random) {
   }
   // Smash debris: small fragments flung off a dashed-through obstacle.
   // Fixed pool, fixed launch speeds — deterministic, no allocation in step.
+  // The launch is a low hop, not a skyward burst: fragments start at the
+  // obstacle's base on the ground and settle back onto the dirt within a
+  // fraction of a second, so they never hang in the sky above Tilly.
   const debris = [];
   for (let i = 0; i < 12; i += 1) {
     debris.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, size: 6, color: '#d9a441' });
   }
-  const DEBRIS_VX = [-160, -90, -40, 30, 90, 150];
-  const DEBRIS_VY = [-320, -380, -280, -340, -260, -300];
+  const DEBRIS_VX = [-120, -70, -30, 30, 70, 120];
+  const DEBRIS_VY = [-90, -140, -60, -120, -70, -100];
   const state = {
     player, obstacles, pickups, debris,
     score: 0, distance: 0, lives: LIVES, elapsed: 0, dinnerLeft: DINNER_SECONDS,
@@ -150,16 +153,18 @@ export function createWorld(random) {
   }
 
   function spawnDebris(o) {
-    // Six fragments in the smashed obstacle's own colours, flung up and out.
+    // Six fragments in the smashed obstacle's own colours, hopping off its
+    // base where it stood — on the ground, next to Tilly — and landing
+    // back on the dirt almost at once.
     const color = o.kind === KIND_FENCE ? '#8a6a42' : o.kind === KIND_OVEN ? '#ff7a1a' : o.kind === KIND_KNIFE ? '#d7dce4' : '#d9a441';
     let n = 0;
     for (const d of debris) {
       if (n >= 6) break;
       if (d.active) continue;
       d.active = true;
-      d.x = o.x + o.width / 2; d.y = o.y + o.height / 2;
+      d.x = o.x + o.width / 2; d.y = FIELD.groundY - 4;
       d.vx = DEBRIS_VX[n]; d.vy = DEBRIS_VY[n];
-      d.life = 0.8; d.size = 6 + (n % 3) * 2; d.color = color;
+      d.life = 0.6; d.size = 6 + (n % 3) * 2; d.color = color;
       n += 1;
     }
   }
@@ -196,8 +201,11 @@ export function createWorld(random) {
       d.x += d.vx * dt;
       d.y += d.vy * dt;
       d.vy += 1400 * dt;
+      // A fragment that reaches the dirt stays on it instead of sinking
+      // or bouncing — it is ground rubble, not a sky object.
+      if (d.y >= FIELD.groundY - d.size / 2) { d.y = FIELD.groundY - d.size / 2; d.vy = 0; }
       d.life -= dt;
-      if (d.life <= 0 || d.y > FIELD.groundY + 6) d.active = false;
+      if (d.life <= 0) d.active = false;
     }
 
     // Farmer Bram: clean running slowly rebuilds the gap; dashing gains more.
