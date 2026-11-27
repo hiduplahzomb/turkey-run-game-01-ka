@@ -12,10 +12,10 @@ This game was built from scratch for the make.fun competition **"Make the best t
 
 1. **Run!** Tilly runs on her own — your job is the timing. The dinner countdown at the top is real: reach 1000m before it hits zero.
 2. **Jump** with `Space`, `↑`, `W`, or a click/tap on the left half of the screen. Jump again mid-air for a double jump over tall fences and ovens.
-3. **Dash** with `Shift`, `X`, or a click/tap on the right half. A dash smashes straight through a hay bale or fence (+25) and rebuilds the gap to Farmer Bram.
+3. **Dash** with `Shift`, `X`, or a click/tap on the right half. A dash smashes straight through a hay bale or fence (+25, and it raises your combo) and rebuilds the gap to Farmer Bram.
 4. **Slide** with `↓` or `S` to duck under the swinging carving knife.
 5. **Watch the gap.** Every stumble costs a life and lets Farmer Bram close 7m. At 0m — or when the dinner bell rings — Tilly is caught. Three zones, one escape: Barn Yard (0–333m), Cornfield (334–666m), Pine Forest (667–1000m).
-6. **Collect:** corn +10, pumpkin pie +25, golden feather +50 and an instant dash refill. Combos build as you collect without stumbling.
+6. **Collect:** corn +10, pumpkin pie +25, golden feather +50 and an instant dash refill. Combos build as you collect or smash without stumbling.
 
 ## ⌨️ Controls
 
@@ -40,7 +40,7 @@ Then open http://localhost:8080 in a desktop browser. No build step, no dependen
 
 Real renders of the game's own code (`?shot=` scenes, seed 1):
 
-1. `1-climax.jpg` — mid-run in the Pine Forest, 920m in with 0:07 left on the 40-second dinner clock, Farmer Bram 25m behind, a fresh dash smash (COMBO x3, score 1105).
+1. `1-climax.jpg` — mid-run in the Pine Forest, 920m in with 0:07 left on the 40-second dinner clock, Farmer Bram 26m behind, a fresh dash smash (COMBO x3, score 1155: 920m + 1 corn + 1 pie + 1 feather + 7 smashes − 1 stumble).
 2. `2-title.jpg` — title screen.
 3. `3-caught.jpg` — caught end screen.
 4. `4-escaped.jpg` — escaped end screen.
